@@ -1,4 +1,4 @@
-import { Component } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { nanoid } from 'nanoid';
 import initial from '../data.json';
 import Filter from './Filter/Filter';
@@ -9,31 +9,42 @@ import { MainHeading, SecondaryHeading } from './Heading/Heading.styled';
 
 const LS_KEY = 'contacts';
 
-export class App extends Component {
-  state = {
-    contacts: initial,
-    filter: '',
-  };
+export function App() {
+  const [contacts, setContacts] = useState(initial);
+  const [filter, setFilter] = useState('');
 
-  componentDidMount() {
+  // debugger;
+  // useEffect работает максимально не корректно, на первом рендере обновляет LocalStorag всегда массивом initial
+
+  // ????????????????????????????????
+  const firstRender = useRef(true);
+  // ????????????????????????????????
+
+  useEffect(() => {
+    console.log('useEffect mount');
     const parsedContacts = JSON.parse(localStorage.getItem(LS_KEY));
-    console.log(parsedContacts?.length);
     if (parsedContacts?.length > 0) {
-      this.setState({ contacts: parsedContacts });
+      console.log(parsedContacts);
+
+      setContacts(parsedContacts);
+
+      // console.log(contacts);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
     } else {
-      localStorage.setItem(LS_KEY, JSON.stringify(this.state.contacts));
-    }
-  }
+      console.log('useEffect update');
+      // console.log(contacts);
 
-  componentDidUpdate(_, prevState) {
-    if (prevState.contacts !== this.state.contacts) {
-      localStorage.setItem(LS_KEY, JSON.stringify(this.state.contacts));
+      localStorage.setItem(LS_KEY, JSON.stringify(contacts));
     }
-  }
+  }, [contacts]);
 
-  handelSubmit = e => {
+  const handelSubmit = e => {
     e.preventDefault();
-    const { contacts } = this.state;
     const newName = e.target.elements.name.value;
     const newNumber = e.target.elements.number.value;
     const findeName = contacts.some(contact =>
@@ -52,44 +63,41 @@ export class App extends Component {
     ];
 
     if (!findeName && !findeNumber) {
-      this.setState(({ contacts }) => ({
-        contacts: [...contacts, ...newContact],
-      }));
+      setContacts(prevContacts => [...prevContacts, ...newContact]);
       e.target.reset();
     } else {
       alert(`${newName} is already in contacts`);
     }
   };
 
-  handleChange = e => {
+  const handleChange = e => {
     const value = e.target.value;
-    this.setState({ filter: value });
+    setFilter(value);
   };
 
-  daleteContact = contactId => {
-    this.setState(prevState => ({
-      contacts: prevState.contacts.filter(contact => contact.id !== contactId),
-    }));
+  const daleteContact = contactId => {
+    setContacts(prevContacts =>
+      prevContacts.filter(contact => contact.id !== contactId)
+    );
   };
 
-  render() {
-    const normalizedFilter = this.state.filter.toLocaleLowerCase();
-    const visibleContacts = this.state.contacts.filter(contact =>
-      contact.name.toLowerCase().includes(normalizedFilter)
-    );
-    return (
-      <Wrapper>
-        <MainHeading>Phonebook</MainHeading>
-        <ContactForm onSubmiting={this.handelSubmit} />
-        <SecondaryHeading>Contacts</SecondaryHeading>
-        <Filter value={this.state.filter} onChange={this.handleChange} />
-        {visibleContacts.length !== 0 && (
-          <ContactList
-            contacts={visibleContacts}
-            onDeleteContact={this.daleteContact}
-          />
-        )}
-      </Wrapper>
-    );
-  }
+  const normalizedFilter = filter.toLocaleLowerCase();
+  const visibleContacts = contacts.filter(contact =>
+    contact.name.toLowerCase().includes(normalizedFilter)
+  );
+
+  return (
+    <Wrapper>
+      <MainHeading>Phonebook</MainHeading>
+      <ContactForm onSubmiting={handelSubmit} />
+      <SecondaryHeading>Contacts</SecondaryHeading>
+      <Filter value={filter} onChange={handleChange} />
+      {visibleContacts.length !== 0 && (
+        <ContactList
+          contacts={visibleContacts}
+          onDeleteContact={daleteContact}
+        />
+      )}
+    </Wrapper>
+  );
 }
